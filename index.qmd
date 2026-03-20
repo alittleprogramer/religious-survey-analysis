@@ -1,0 +1,546 @@
+---
+title: "Religie i Społeczeństwo"
+author: "Aleksandra Olszyńska"
+format: 
+  html:
+    title-block-banner: "images/heaven.jpg"
+    toc: true  
+    toc-title: "Spis treści"
+    toc-location: left
+    theme: cosmo
+editor: visual
+---
+
+```{=html}
+<style>
+.quarto-title-block .title {
+  color: black !important;
+}
+</style>
+```
+
+# Wstęp
+
+Projekt ten ma na celu analizę różnorodnych aspektów religijności i związanych z nią postaw w społeczeństwie. Skupiono się na badaniu wyznań, ich znaczenia kulturowego, wpływu na codzienne życie oraz na relacjach między różnymi grupami wyznaniowymi. Dzięki zgromadzonym danym przeanalizowano zarówno kwestie tożsamości religijnej, jak i indywidualne postawy wobec praktyk religijnych, takich jak modlitwa w miejscach publicznych czy uczestnictwo w obrzędach.
+
+Analiza tych danych pozwala lepiej zrozumieć, jakie są różnice i podobieństwa między grupami wyznaniowymi oraz jakie wyzwania i możliwości wynikają z tej różnorodności.
+
+Ciekawostka:
+
+Czy agnostycy są ateistami? Nie. Ateista, podobnie jak chrześcijanin, uważa, że możemy wiedzieć czy Bóg istnieje, czy też nie istnieje.
+
+```{r setup, echo=FALSE, include=FALSE}
+suppressPackageStartupMessages({
+  library(tidyverse)
+  library(circlize)
+  library(magick)
+  library(factoextra)
+  library(rio)
+  library(jpeg)
+  library(RColorBrewer)
+  library(DBI)
+  library(RSQLite)})
+
+
+library(treemapify, quietly = TRUE, warn.conflicts = FALSE)
+library(htmlwidgets, quietly = TRUE, warn.conflicts = FALSE)
+library(fmsb, quietly = TRUE, warn.conflicts = FALSE)
+library(shiny, quietly = TRUE, warn.conflicts = FALSE)
+library(networkD3, quietly = TRUE, warn.conflicts = FALSE)
+library(viridis, quietly = TRUE, warn.conflicts = FALSE)
+library(patchwork, quietly = TRUE, warn.conflicts = FALSE)
+library(circlize, quietly = TRUE, warn.conflicts = FALSE)
+library(magick, quietly = TRUE, warn.conflicts = FALSE)
+library(grid, quietly = TRUE, warn.conflicts = FALSE)
+library(ggpattern, quietly = TRUE, warn.conflicts = FALSE)
+library(gridExtra, quietly = TRUE, warn.conflicts = FALSE)
+library(factoextra, quietly = TRUE, warn.conflicts = FALSE)
+library(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(dplyr, quietly = TRUE, warn.conflicts = FALSE)
+library(ggplot2, quietly = TRUE, warn.conflicts = FALSE)
+library(plotly, quietly = TRUE, warn.conflicts = FALSE)
+library(stringr, quietly = TRUE, warn.conflicts = FALSE)
+library(rvest, quietly = TRUE, warn.conflicts = FALSE)
+library(reshape2, quietly = TRUE, warn.conflicts = FALSE)
+library(igraph, quietly = TRUE, warn.conflicts = FALSE)
+library(readxl, quietly = TRUE, warn.conflicts = FALSE)
+library(tigris, quietly = TRUE, warn.conflicts = FALSE) 
+library(ggplot2, quietly = TRUE, warn.conflicts = FALSE)
+library(ggiraph, quietly = TRUE, warn.conflicts = FALSE)
+library(maps, quietly = TRUE, warn.conflicts = FALSE)
+library(sf, quietly = TRUE, warn.conflicts = FALSE)
+library(mice, quietly = TRUE, warn.conflicts = FALSE)
+library(extrafont, quietly = TRUE, warn.conflicts = FALSE)
+library(showtext, quietly = TRUE, warn.conflicts = FALSE)
+library(RColorBrewer, quietly = TRUE, warn.conflicts = FALSE)
+library(htmltools, quietly = TRUE, warn.conflicts = FALSE)
+library(showtext, quietly = TRUE, warn.conflicts = FALSE)
+library(ggplotify, quietly = TRUE, warn.conflicts = FALSE)
+library(usmap, quietly = TRUE, warn.conflicts = FALSE)
+library(DescTools, quietly = TRUE, warn.conflicts = FALSE)
+
+set.seed(123)
+```
+
+![](images/picture1.jpg){fig-align="center" width="375"}
+
+```{r echo=FALSE, results="hide", include=FALSE}
+
+Ankieta <- import("ankieta.xlsx")
+Ankieta <- read_excel("ankieta.xlsx")
+
+Ankieta <- Ankieta[, -1]
+
+Ankieta[] <- lapply(Ankieta, function(x) if (is.character(x)) as.factor(x) else x)
+Ankieta <- as.data.frame(Ankieta)
+Ankieta[, 46] <- gsub("\\$", "", Ankieta[, 46])
+```
+
+```{r echo=FALSE, results="hide", include=FALSE}
+# Tworzenie tabeli częstości dla pierwszej kolumny
+value_counts <- as.data.frame(table(Ankieta[[1]]))
+
+# Zmiana nazw kolumn na bardziej czytelne
+colnames(value_counts) <- c("Value", "Count")
+
+# Wyświetlenie wyników
+print(value_counts)
+
+```
+
+# Analiza rozkładu religii w badanej grupie
+
+**Wnioski:**
+
+1.  **Brak religii** jest najczęstszą odpowiedzią (242 osoby), co może wskazywać na rosnącą liczbę osób niezwiązanych z żadną religią.
+
+2.  **Protestanci** (234 osoby) dominują w badanej grupie.
+
+3.  Mniejsze grupy to **Ateiści (111 osób)** i **Agnostycy (123 osoby)**, co sugeruje rosnącą liczbę osób niewierzących.
+
+4.  Religie takie jak **Hinduizm (6 osób)** i **Muzułmanie (11 osób)** mają najmniejszą reprezentację, co może odzwierciedlać mniejszości religijne w tej próbce.
+
+```{r, fig.align = "center", echo=FALSE}
+# Wczytanie obrazu jako tło
+background_image <- rasterGrob(
+  jpeg::readJPEG("images/koran.jpg"), 
+  width = unit(1, "npc"), 
+  height = unit(1, "npc")
+)
+
+# Utworzenie tabeli częstości
+frequencies <- as.data.frame(table(Ankieta[[1]]))
+colnames(frequencies) <- c("Religion", "Frequency")
+
+# Tworzenie wykresu
+plot <- ggplot(frequencies, aes(x = Religion, y = Frequency, fill = Religion)) +
+  geom_bar(stat = "identity", color = "white", linewidth = 0.8, width = 0.7) +
+  scale_fill_brewer(palette = "Set3") +
+  labs(title = "Rozkład osób według religii", x = "Religia", y = "Liczba osób") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 25, face = "bold", color = "white"), plot.title.position = "plot",
+    axis.title.x = element_text(size = 20, face = "bold", color = "white"), # Oś X na czarno
+    axis.title.y = element_text(size = 24, face = "bold", color = "white"), # Oś Y na czarno
+    axis.text.x = element_text(angle = 50, hjust = 1, size = 16, color = "white"), # Tekst osi X na czarno
+    axis.text.y = element_text(size = 13, face = "bold", color = "white"), # Tekst osi Y na czarno
+    legend.position = "none", # Ukrycie legendy
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "transparent", color = NA), 
+    plot.background = element_rect(fill = "transparent", color = NA)
+  ) +
+  coord_flip()
+
+# Dodanie tła na cały obszar wykresu
+grid.newpage()
+grid.draw(background_image) # Rysowanie tła
+print(plot, vp = viewport(width = 0.95, height = 0.95)) # Dodanie wykresu na tle
+
+```
+
+~Prawosławni księża mogą się żenić, ponieważ celibat nie jest wymagany, jak w Kościele katolickim. Jednakże biskupi~
+
+~muszą być nieżonaci. Ponadto, prawosławni wierzą w Maryję jako Teotokos (Matkę Bożą), ale nie czczą jej w takim~
+
+~stopniu jak katolickie dogmaty, takie jak Niepokalane Poczęcie czy Wniebowzięcie.~
+
+![](images/prawosl.jpg){width="48%"} ![Prawosławni księża mogą się żenić, ponieważ celibat nie jest wymagany, jak w Kościele katolickim. Jednakże biskupi muszą być nieżonaci. Ponadto, prawosławni wierzą w Maryję jako Teotokos (Matkę Bożą), ale nie czczą jej w takim stopniu jak katolickie dogmaty, takie jak Niepokalane Poczęcie czy Wniebowzięcie.](images/prawoslaw.jpg){width="49.5%"}
+
+# Sekularyzacja młodszych pokoleń a przynależność religijna
+
+**Sekularyzacja** to proces stopniowego zmniejszania się znaczenia religii w życiu społecznym, kulturowym i indywidualnym.
+
+Wykres 3D wskazuje na wyraźny trend sekularyzacji wśród młodszych grup wiekowych. W grupie 18–29 lat najliczniej reprezentowaną kategorią są osoby deklarujące brak przynależności religijnej ("None of these"), w tym 27 kobiet i 26 mężczyzn. W przeciwieństwie do tego, tradycyjne religie, takie jak "Protestant" czy "Roman Catholic," mają większą reprezentację w starszych grupach wiekowych, np. w grupie 60+ "Protestant" obejmuje aż 51 kobiet i 29 mężczyzn. To zjawisko może świadczyć o odchodzeniu młodszych pokoleń od instytucji religijnych na rzecz bardziej indywidualnych postaw światopoglądowych.
+
+```{r, fig.align = "center", echo=FALSE, error=TRUE, warning=FALSE, message=FALSE}
+
+# Wybór kolumn i usunięcie brakujących danych
+gender <- Ankieta %>%
+  select(Religion = `What is your present religion, if any?`, 
+         Age = `What is your age?`, 
+         Gender = `What is your gender?`) %>%
+  filter(!is.na(Religion) & !is.na(Age) & !is.na(Gender))  # Usuwanie brakujących danych
+
+# Utworzenie listy wszystkich unikalnych wartości dla każdej zmiennej
+all_religions <- unique(Ankieta$`What is your present religion, if any?`)
+all_ages <- unique(Ankieta$`What is your age?`)
+all_genders <- unique(Ankieta$`What is your gender?`)
+
+# Utworzenie pełnej siatki kombinacji religii, wieku i płci
+full_combinations <- expand.grid(
+  Religion = all_religions,
+  Age = all_ages,
+  Gender = all_genders
+)
+
+# Tworzenie agregacji danych
+gender_count <- gender %>%
+  group_by(Religion, Age, Gender) %>%
+  summarise(Frequency = n(), .groups = 'drop')
+
+# Uzupełnienie brakujących kombinacji zerowymi wartościami
+gender_count <- full_combinations %>%
+  left_join(gender_count, by = c("Religion", "Age", "Gender")) %>%
+  replace_na(list(Frequency = 0))  # Wypełnienie braków zerami
+
+# Tworzenie wykresu 3D
+fig <- plot_ly(gender_count, 
+              x = ~Religion, 
+              y = ~Age, 
+              z = ~Frequency, 
+              color = ~Gender, 
+              colors = c('lightblue', 'pink'), # Stonowane kolory dla płci
+              size = ~Frequency,  # Rozmiar punktów w zależności od liczby osób
+              sizes = c(10, 30),  # Zakres rozmiarów punktów
+              type = "scatter3d", 
+              mode = "markers", 
+              marker = list(
+                opacity = 0.9, 
+                size = 5  # Minimalny rozmiar punktów
+              ))  
+
+# Dostosowanie wyglądu wykresu
+fig <- fig %>%
+  layout(
+    title = list(
+      text = "Porównanie liczby osób w religiach w zależności od wieku i płci",
+      font = list(size = 20, color = '#2c3e50', family = 'Arial', weight = 'bold'),
+      x = 0.5,  # Wyśrodkowanie tytułu
+      xanchor = 'center', # Wyśrodkowanie tytułu
+      yanchor = 'top'  # Ustawienie tytułu na górze
+    ),
+    scene = list(
+      xaxis = list(
+        title = 'Religia',
+        titlefont = list(size = 14, color = '#2c3e50'),
+        tickfont = list(size = 12, color = '#34495e')
+      ),
+      yaxis = list(
+        title = 'Wiek',
+        titlefont = list(size = 14, color = '#2c3e50'),
+        tickfont = list(size = 12, color = '#34495e')
+      ),
+      zaxis = list(
+        title = 'Liczba osób',
+        titlefont = list(size = 14, color = '#2c3e50'),
+        tickfont = list(size = 12, color = '#34495e')
+      )
+    ),
+    legend = list(
+      title = list(text = "Płeć"),
+      font = list(size = 12, color = '#34495e'),
+      traceorder = 'reversed',  # Zmienia kolejność legendy
+      marker = list(
+        symbol = 'circle',  # Ustawia symbol kółka w legendzie
+        size = 20  # Zwiększa rozmiar kółek w legendzie
+      )
+    )
+  )
+
+# Wyświetlanie wykresu
+fig
+
+```
+
+![hinduizm - wyznawców różnych odłamów hinduizmu łączą wiara w święte księgi Wedy, reinkarnację duszy, karmę, a także dążenie do wyzwolenia. Z hinduizmu wywodzi sie buddyzm.](images/hinduizm.jpg){fig-align="center" width="60%"}
+
+# Jak często różne grupy religijne uczestniczą w obrzędach?
+
+-   Regularne uczestnictwo w obrzędach religijnych jest najczęściej praktykowane przez Mormonów, Rzymskich Katolików i Protestantów.
+
+-   **Agnostycy i Ateiści** najczęściej wcale nie biorą udziału w obrzędach religijnych.
+
+-   Grupy takie jak **Prawosławni Chrześcijanie**, **Żydzi**, czy **Hindusi** wykazują tendencję do uczestniczenia w obrzędach religijnych mniej niż raz w tygodniu, co jest reprezentowane przez jaśniejsze odcienie czerwieni w tej kategorii.
+
+-   Dominacja ciemnoczerwonych kolorów w wierszu "Never" dotyczy grup **Agnostyków** i **Ateistów**, co wskazuje na to, że osoby z tych grup rzadko lub wcale nie uczestniczą w obrzędach religijnych.
+
+```{r, fig.align = "center", echo=FALSE}
+
+
+# Tworzenie tabeli krzyżowej z danymi
+cross_table <- as.data.frame(table(Ankieta$`What is your present religion, if any?`,
+                                   Ankieta$`Do you attend religious services`))
+
+colnames(cross_table) <- c("Var1", "Var2", "Freq")
+
+# Obliczanie procentów
+cross_table <- cross_table %>%
+  group_by(Var1) %>%
+  mutate(Percent = Freq / sum(Freq) * 100)
+
+ggplot(cross_table, aes(x = Var1, y = Var2, fill = Percent)) +
+  geom_tile() +
+  scale_fill_gradient(low = "ivory", high = "tomato3", name = "Procentowy wyznacznik") +  
+  labs(title = "Uczestnictwo na religijnych obrzędach",
+       x = "Religia", y = "Częstość") + 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 20, face = "bold", color = "#2c3e50"),   plot.title.position = "plot", 
+    axis.title.x = element_text(size = 14, face = "bold", color = "#34495e"),
+    axis.title.y = element_text(size = 14, face = "bold", color = "#34495e"),
+    axis.text.x = element_text(angle = 35, hjust = 1, vjust = 1, size = 13, color = "#34495e"),
+    axis.text.y = element_text(size = 14, color = "#34495e"),
+    legend.position = "bottom",  
+    legend.text = element_text(size = 14, color = "#34495e"), # Zmiana czcionki w legendzie
+        legend.title = element_text(size = 14, face = "bold", color = "#34495e"), # Zmiana czcionki tytułu legendy
+    plot.background = element_rect(fill = "#f0f3f4", color = "#ecf0f1"),
+    panel.grid.major = element_line(color = "#7f8c8d", linewidth = 0.5),  
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "#2c3e50", fill = NA, linewidth = 1.9)
+  )
+
+```
+
+![](images/picture3.jpg){fig-align="center" width="35%"}
+
+# Zachowania związane z modlitwą w różnych grupach religijnych
+
+-   Wyznania, takie jak protestanci, katolicy rzymscy czy prawosławni, są bardziej zaangażowane w codzienną modlitwę i proponowanie wspólnych modlitw w porównaniu z grupami, które deklarują się jako ateiści, agnostycy lub osoby bez przynależności religijnej.
+
+-   Ateiści oraz agnostycy dominują w kategoriach "Never" i "Not applicable to my religious beliefs".
+
+-   Rzymscy katolicy oraz protestanci są najbardziej aktywni w codziennym wyrażaniu intencji modlitwy za innych i proponowaniu wspólnych modlitw.
+
+```{r, fig.align = "center", echo=FALSE}
+
+# Przygotowanie danych
+links_left <- Ankieta %>%
+  count(source = paste("Religia:", Ankieta[[7]]), target = paste("Modlitwa publiczna:", Ankieta[[1]])) %>%
+  rename(value = n)
+
+links_right <- Ankieta %>%
+  count(source = paste("Modlitwa publiczna:", Ankieta[[1]]), target = paste("Częstotliwość uczestnictwa:", Ankieta[[8]])) %>%
+  rename(value = n)
+
+# Łączenie danych
+links <- bind_rows(links_left, links_right)
+
+# Tworzenie węzłów (nodes)
+nodes <- data.frame(name = unique(c(links$source, links$target)), stringsAsFactors = FALSE)
+nodes$label <- gsub("Religia: |Modlitwa publiczna: |Częstotliwość uczestnictwa: ", "", nodes$name)
+
+# Umieszczamy 'Religia' w centrum
+center_node <- which(nodes$label == "Religia")  # Znajdź węzeł "Religia"
+nodes$group <- ifelse(nodes$label == "Religia", 1, 2)  # Grupowanie węzłów
+
+# Indeksowanie węzłów
+links$source <- match(links$source, nodes$name) - 1
+links$target <- match(links$target, nodes$name) - 1
+
+# Sankey Network
+sankey <- sankeyNetwork(Links = links, Nodes = nodes,
+                        Source = "source", Target = "target", Value = "value",
+                        NodeID = "label", units = "Liczność", fontSize = 14,
+                        nodeWidth = 30, nodePadding = 15, iterations = 0,
+                        width = 700, height = 500)
+
+# Dodanie tytułu
+title <- tags$div(
+  style = "font-size: 28px; font-weight: bold; text-align: center; margin-bottom: 10px; color: #2c3e50;",
+  HTML("Jak często mówisz komuś, że będziesz się za niego modlić<br>vs.<br>Jak często prosisz lub proponujesz modlitwę z kimś")
+)
+
+# Wyjściowy wykres
+output <- tagList(title, sankey)
+
+# Wyświetlenie wyniku
+output
+
+```
+
+## **Współczynnik Craméra**
+
+to miara siły zależności między dwiema zmiennymi kategorycznymi. Jego wartość mieści się w zakresie od 0 do 1:
+
+-   **0** oznacza, że nie ma żadnej zależności między zmiennymi (są niezależne).
+
+-   **1** oznacza, że zmienne są całkowicie zależne (istnieje silna zależność).
+
+jeśli znamy religię osoby, mamy pewne wskazówki na temat jej skłonności do uczestniczenia w obrzędach religijnych, ale nie jest to reguła. To nie oznacza, że osoby wyznające konkretną religię zawsze będą uczestniczyć w obrzędach, ale takie zachowanie jest bardziej prawdopodobne w tej grupie.
+
+Współczynnik Craméra wynoszący **0,11** między pytaniem o to, „jakiej wiary jesteś?” a „jak wygodne jest dla ciebie, gdy ktoś spoza twojej religii modli się publicznie, używając fizycznych przedmiotów” oznacza, że zależność między tymi zmiennymi jest **bardzo słaba**.
+
+**Wniosek**: Tak niski współczynnik sugeruje, że pytanie o religię i pytanie o komfort w tej konkretnej sytuacji są praktycznie niezależne od siebie.
+
+```{r, fig.align = "center", echo=FALSE}
+
+# Inicjalizacja pustego wektora na wyniki
+cramer_values <- c()
+variable_pairs <- c()
+
+# Pętla po wszystkich kolumnach (oprócz pierwszej)
+for(i in 2:ncol(Ankieta)) {
+  # Tworzenie tabeli kontyngencji między pierwszą kolumną a i-tą kolumną
+  tabela <- table(Ankieta[[1]], Ankieta[[i]])
+  
+  # Obliczanie współczynnika Craméra dla danej tabeli kontyngencji
+  cramer_values <- append(cramer_values, CramerV(tabela))
+  
+  # Dodanie pary zmiennych do listy
+  variable_pairs <- append(variable_pairs, paste(colnames(Ankieta)[1], "vs", colnames(Ankieta)[i]))
+}
+
+# Stworzenie ramki danych do wykresu
+cramer_df <- data.frame(
+  Variable_Pair = variable_pairs,
+  CramerV = cramer_values
+)
+
+# Tworzenie wykresu słupkowego z interaktywnością
+plot <- ggplot(cramer_df, aes(x = Variable_Pair, y = CramerV, text = paste("Para zmiennych: ", gsub("vs", "<br>vs", Variable_Pair), "<br>Współczynnik Craméra: ", round(CramerV, 2)))) +
+  geom_bar(stat = "identity", fill = "skyblue") +
+  coord_flip() +
+  labs(
+    title = "Współczynnik Craméra dla par zmiennych",
+    x = "Para zmiennych",
+    y = "Współczynnik Craméra"
+  ) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 20, face = "bold", color = "#2c3e50"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    axis.text.y = element_blank(),  # Usuwanie tekstu z osi Y
+    axis.title.x = element_text(size = 16, face = "bold", color = "#2c3e50"),
+    axis.title.y = element_blank(),  # Usuwanie tytułu osi Y
+    plot.background = element_rect(fill = "#ecf0f1", color = "#ecf0f1"),
+    panel.grid.major = element_line(color = "#bdc3c7", linewidth = 0.3),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "#34495e", fill = NA, linewidth = 1.0)
+  )
+
+# Konwersja wykresu na interaktywny za pomocą plotly
+interactive_plot <- ggplotly(plot, tooltip = "text")
+
+# Wyświetlenie interaktywnego wykresu
+interactive_plot
+
+
+
+```
+
+# Rozkład Religii na Świecie
+
+Chrześcijanie stanowią największą grupę religijną na świecie. Islam, jako druga największa religia, dynamicznie się rozprzestrzenia.
+
+Islam rozwija się nie tylko dzięki sile i atrakcyjności swoich założeń wiary, które przyciągają nowych wyznawców, ale również dzięki sprzyjającej strukturze demograficznej. W krajach, gdzie islam dominuje, populacja cechuje się wysokim wskaźnikiem dzietności oraz młodą strukturą wiekową, co dodatkowo napędza jego dynamiczny wzrost.
+
+Chociaż obie religie będą rosły, to populacja muzułmanów przekroczy populację chrześcijan i do 2100 r. populacja muzułmanów (35%) będzie o 1% większa niż populacja chrześcijan (34%). Oczekuje się, że do końca 2100 roku liczba muzułmanów przewyższy lic
+
+![](images/picture2.jpg)
+
+# Komfort modlitwy w publicznych miejscach
+
+-   **Znaczące różnice między grupami**: Wyznania takie jak muzułmanie, mormoni i protestanci wykazują wyższy poziom komfortu modlitwy w miejscach publicznych, co może wynikać z tradycji religijnych zachęcających do modlitwy niezależnie od miejsca.
+
+-   **Agnostycy i ateiści**: Te grupy dominują w kategorii „I don’t do this” („Nie robię tego”), co odzwierciedla brak praktyk modlitewnych związanych z religią.
+
+-   **Tradycje religijne a komfort**: Żydzi i prawosławni chrześcijanie wykazują zróżnicowany poziom komfortu, co może wynikać z różnic kulturowych i lokalnych norm społecznych dotyczących praktyk religijnych w przestrzeni publicznej.
+
+-   **Różnorodność w postawach**: Większość grup wykazuje umiarkowany poziom komfortu (kategorie „Somewhat comfortably” i „Very comfortable”), co może wskazywać na akceptację modlitwy publicznej w kontekście kulturowym, ale z pewnym stopniem rezerwy.
+
+```{r, fig.align = "center", echo=FALSE, error=TRUE, warning=FALSE, message=FALSE}
+
+# Utworzenie tabeli częstości dla religii i komfortu
+data <- as.data.frame(table(Ankieta[[1]], Ankieta[[14]]))
+colnames(data) <- c("Religion", "ComfortLevel", "Frequency")
+
+# Obliczanie procentów dla każdej religii
+data <- data %>%
+  group_by(Religion) %>%
+  mutate(Percentage = Frequency / sum(Frequency) * 100)
+
+# Przekształcenie 'Religion' na numerowane kategorie do osi X
+data$time <- as.numeric(factor(data$Religion, levels = unique(data$Religion)))
+
+# Wykres typu stacked area chart w procentach
+ggplot(data, aes(x = time, y = Percentage, fill = ComfortLevel)) + 
+  geom_area() +
+  scale_x_continuous(
+    breaks = seq(1, length(unique(data$Religion)), 1), 
+    labels = unique(data$Religion)
+  ) +
+  scale_fill_brewer(palette = "PRGn") +  # Dodanie kolorów
+  labs(
+    title = "Komfort modlitwy \nw publicznych miejscach",  # Nowa linia w tytule
+    x = "Wyznanie", 
+    y = "Procent"
+  ) +
+  theme_minimal() +  # Użycie minimalnego motywu
+  theme(
+  plot.title = element_text(hjust = 0.5, size = 25, face = "bold", color = "#2c3e50"),
+    axis.title.x = element_text(size = 20, face = "bold", color = "#2c3e50"),
+    axis.title.y = element_text(size = 24, face = "bold", color = "#2c3e50"),
+    axis.text.x = element_text(angle = 40, hjust = 1, size = 12, color = "#2c3e50"),
+    axis.text.y = element_text(size = 12, color = "#2c3e50"),
+    plot.background = element_rect(fill = "#ecf0f1", color = "#ecf0f1"),
+    panel.grid.major = element_line(color = "#bdc3c7", size = 0.3),  # Grubsza siatka
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "#34495e", fill = NA, size = 1.0)
+  ) +
+  guides(fill = guide_legend(title = NULL))  # Usunięcie tytułu legendy
+```
+
+# Zarobki w przedziałach dochodowych w kontekście wyznania
+
+-   **Różnorodność dochodów**: Dochody są zróżnicowane w każdej grupie wyznaniowej, ale niektóre wyznania, jak np. „None of these” oraz „Roman Catholic”, mają więcej osób w średnich przedziałach dochodowych.
+
+-   **Grupy z wyższymi dochodami**: Wyznania żydowskie i protestanckie wydają się mieć więcej osób w wyższych przedziałach dochodowych (np. „200,000 and up”).
+
+-   **Niskie dochody**: W grupach takich jak „Buddhist” i „Hindu” widać mniejszą reprezentację, ale większość jest w niższych przedziałach dochodowych.
+
+-   **Brak odpowiedzi**: Duża liczba respondentów w każdej grupie wybrała opcję nieujawniania dochodów. To może wskazywać na pewne tabu związane z rozmowami o finansach w kontekście religijnym lub społeczny dyskomfort związany z ujawnianiem takich informacji. Szczególnie może to dotyczyć wyznań, w których istnieje nacisk na skromność lub brak przywiązywania wagi do materialnych dóbr.
+
+```{r, fig.align = "center", echo=FALSE}
+# Wykres słupkowy z legendą, ale bez tytułu
+ggplot(Ankieta, aes(x = `What is your present religion, if any?`, 
+                    fill = `How much total combined money did all members of your HOUSEHOLD earn last year?`)) +
+  geom_bar(position = "dodge") +  # Tworzymy wykres słupkowy z grupami
+  labs(title = "Rozkład dochodów w zależności od wyznania", 
+       x = "Wyznanie", 
+       y = "Liczba odpowiedzi") +  # Etykieta osi Y
+  theme_minimal() +
+  theme( plot.title = element_text(hjust = 0.5, size = 20, face = "bold", 
+                                   color = "#2c3e50"),plot.title.position = "plot",
+         axis.text.x = element_text(angle = 35, hjust = 1, face = "bold"),  # Obrót etykiet osi X
+        legend.title = element_blank())  # Usunięcie tytułu legendy, ale legenda pozostaje
+
+```
+
+# Podsumowanie
+
+Całość projektu dostarczyła istotnych informacji o religiach, postawach wobec nich oraz ich roli w życiu społecznym. Zauważalne są trendy takie jak wzrost liczby osób deklarujących brak przynależności religijnej, co wskazuje na postępującą sekularyzację, oraz różnorodność opinii w kwestii praktyk religijnych, takich jak modlitwa publiczna. Analizując dane, należy jednak pamiętać, że religia jest złożonym i osobistym aspektem życia, a nasze wyniki to jedynie wycinek szerszego obrazu.
+
+Mimo ograniczeń analizy, wyniki wskazują na istotne zależności, np. większe zaangażowanie w obrzędy religijne wśród osób wyznających tradycyjne religie, takie jak protestantyzm czy prawosławie. Projekt podkreśla również znaczenie tolerancji i różnorodności w kontekście religijnym, co jest kluczowe w dzisiejszym globalnym społeczeństwie.
+
+![](images/picture4.png){fig-align="center" width="400"}
+
+### Źródła:
+
+**Baza danych:**
+
+<https://www.kaggle.com/datasets/tunguz/religion-survey> <https://www.ortograf.pl/slownik/agnostyk> <https://www.bryk.pl/artykul/mormoni-a-amisze-czym-sie-rozni-ich-zycie-i-obyczaje#h_150392320101706783884116> <https://www.pewresearch.org/religion/2022/12/21/key-findings-from-the-global-religious-futures-project/>
+
+**Moje repozytorium:**
+
+<https://github.com/alittleprogramer>
